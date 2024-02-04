@@ -19,16 +19,15 @@ public class StockAnalyst implements IStockAnalyst {
         );
 
         BufferedReader inputStream = new BufferedReader(new InputStreamReader(stockListURL.getInputStream()));
-
         String inputLine;
-        StringBuilder text = new StringBuilder();
+        StringBuilder urlHtml = new StringBuilder();
 
         while ((inputLine = inputStream.readLine()) != null) {
-            text.append(inputLine).append("\n");
+            urlHtml.append(inputLine).append("\n");
         }
 
         inputStream.close();
-        return text.toString();
+        return urlHtml.toString();
     }
 
     @Override
@@ -42,7 +41,6 @@ public class StockAnalyst implements IStockAnalyst {
         Matcher matcher = pattern.matcher(urlText);
 
         while (matcher.find()) {
-            System.out.println(matcher.group(1)); // todo remove
             result.add(matcher.group(1));
         }
         return result;
@@ -56,9 +54,9 @@ public class StockAnalyst implements IStockAnalyst {
                         stockCategoryName + ".*?" + "</ul>"
         );
         Matcher matcher = pattern.matcher(urlText);
+
         matcher.find();
         String categoryGroup = matcher.group();
-        System.out.println(categoryGroup); // todo remove
 
         pattern = Pattern.compile(
                 "<li>.*?<a href=\"/list/(.*?)\">(.*?)</a>\s?</li>"
@@ -68,26 +66,87 @@ public class StockAnalyst implements IStockAnalyst {
         while (matcher.find()) {
             String link = "https://stockanalysis.com/list/" + matcher.group(1);
             subCategory_hyperLink_map.put(matcher.group(2), link);
-            System.out.println(link); // todo remove
-            System.out.println(matcher.group(2)); // todo remove
         }
         return subCategory_hyperLink_map;
     }
 
+    // todo make helper methods
     @Override
-    public TreeMap<Double, String> getTopCompaniesByChangeRate(String urlText, int topCount) throws Exception {
-        Map<String, Double> percentChange_company_map = new TreeMap<>();
-        String subCat_urlText = getUrlText(urlText);
+    public TreeMap<Double, List<String>> getTopCompaniesByChangeRate(String urlText) throws Exception {
+        TreeMap<Double, List<String>> percentChange_company_map = new TreeMap<>(Collections.reverseOrder());
+        String subCat_urlHtml = getUrlText(urlText);
         Pattern pattern = Pattern.compile("<tr .*?>" +
+                "(.*?)*" +
+                "<td .*?><a href.*?</td>" +
+                "<td .*?>(.*?)</td>" +
+                "(<td class=\"svelte-\\w{7}\">\\d+\\.\\d+%</td>)?" +
+                ".*?" +
+                "<td .*?>((-?\\d+\\.\\d+)%|-)</td>" +
+                ".*?" +
+                "</tr>");
+        Matcher matcher = pattern.matcher(subCat_urlHtml);
+
+        while (matcher.find()) {
+            double key;
+            if (Objects.equals(matcher.group(4), "-")) {
+                key = 0.0;
+            } else {
+                key = Double.parseDouble(matcher.group(5));
+            }
+            String value = matcher.group(2);
+
+            if (!percentChange_company_map.containsKey(key)) {
+                List<String> valueList = new LinkedList<>();
+                valueList.add(value);
+                percentChange_company_map.put(key, valueList);
+            } else {
+                percentChange_company_map.get(key).add(value);
+            }
+        }
+
+        return percentChange_company_map;
+    }
+
+    // todo make helper methods
+    public TreeMap<Double, List<String>> getTopCompaniesETF(String urlText) throws Exception {
+        TreeMap<Double, List<String>> percentChange_company_map = new TreeMap<>(Collections.reverseOrder());
+        String subCat_urlHTML = getUrlText(urlText);
+        Pattern pattern = Pattern.compile(
+                "ETFs</h2>.*?" +
+                        "</tbody></table>"
+        );
+        Matcher matcher = pattern.matcher(subCat_urlHTML);
+        matcher.find();
+        String ETF_table = matcher.group();
+
+        pattern = Pattern.compile("<tr .*?>" +
                 "<td .*?>.*?</td>" +
                 "<td .*?>.*?</td>" +
                 "<td .*?>(.*?)</td>" +
-                "<td .*?>.*?</td>" +
-                "<td .*?>.*?</td>" +
-                "<td .*?>(.*?)%</td>" +
-                "" +
+                ".*?" +
+                "<td .*?>((-?\\d+\\.\\d+)%|-)</td>" +
+                ".*?" +
                 "</tr>");
-        Matcher matcher = pattern.matcher(subCat_urlText);
-        return null;
+
+        matcher = pattern.matcher(ETF_table);
+        while (matcher.find()) {
+            double key;
+            if (matcher.group(2) == null){
+                key = 0.0;
+            } else {
+                key = Double.parseDouble(matcher.group(3));
+            }
+            String value = matcher.group(1);
+
+            if (!percentChange_company_map.containsKey(key)) {
+                List<String> valueList = new LinkedList<>();
+                valueList.add(value);
+                percentChange_company_map.put(key, valueList);
+            } else {
+                percentChange_company_map.get(key).add(value);
+            }
+        }
+
+        return percentChange_company_map;
     }
 }
