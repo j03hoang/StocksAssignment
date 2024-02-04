@@ -70,11 +70,36 @@ public class StockAnalyst implements IStockAnalyst {
         return subCategory_hyperLink_map;
     }
 
-    // todo make helper methods
     @Override
     public TreeMap<Double, List<String>> getTopCompaniesByChangeRate(String urlText) throws Exception {
-        TreeMap<Double, List<String>> percentChange_company_map = new TreeMap<>(Collections.reverseOrder());
         String subCat_urlHtml = getUrlText(urlText);
+        Pattern pattern = Pattern.compile(
+                "\\d* Stocks</h2>.*?" +
+                        "</tbody></table>"
+        );
+        Matcher matcher = pattern.matcher(subCat_urlHtml);
+        matcher.find();
+        String regularStock_table = matcher.group();
+
+        return compileIntoMapPercentPattern(regularStock_table);
+    }
+
+    public TreeMap<Double, List<String>> getTopCompaniesETF(String urlText) throws Exception {
+        String subCat_urlHtml = getUrlText(urlText);
+        Pattern pattern = Pattern.compile(
+                "ETFs</h2>.*?" +
+                        "</tbody></table>"
+        );
+        Matcher matcher = pattern.matcher(subCat_urlHtml);
+        matcher.find();
+        String ETF_table = matcher.group();
+
+        return compileIntoMapPercentPattern(ETF_table);
+    }
+
+    /** HELPER METHODS */
+    private static TreeMap<Double, List<String>> compileIntoMapPercentPattern(String tableText) {
+        TreeMap<Double, List<String>> percentChange_company_map = new TreeMap<>(Collections.reverseOrder());
         Pattern pattern = Pattern.compile("<tr .*?>" +
                 "(.*?)*" +
                 "<td .*?><a href.*?</td>" +
@@ -84,7 +109,7 @@ public class StockAnalyst implements IStockAnalyst {
                 "<td .*?>((-?\\d+\\.\\d+)%|-)</td>" +
                 ".*?" +
                 "</tr>");
-        Matcher matcher = pattern.matcher(subCat_urlHtml);
+        Matcher matcher = pattern.matcher(tableText);
 
         while (matcher.find()) {
             double key;
@@ -95,58 +120,19 @@ public class StockAnalyst implements IStockAnalyst {
             }
             String value = matcher.group(2);
 
-            if (!percentChange_company_map.containsKey(key)) {
-                List<String> valueList = new LinkedList<>();
-                valueList.add(value);
-                percentChange_company_map.put(key, valueList);
-            } else {
-                percentChange_company_map.get(key).add(value);
-            }
+            addListToMap(percentChange_company_map, key, value);
         }
-
         return percentChange_company_map;
     }
 
-    // todo make helper methods
-    public TreeMap<Double, List<String>> getTopCompaniesETF(String urlText) throws Exception {
-        TreeMap<Double, List<String>> percentChange_company_map = new TreeMap<>(Collections.reverseOrder());
-        String subCat_urlHTML = getUrlText(urlText);
-        Pattern pattern = Pattern.compile(
-                "ETFs</h2>.*?" +
-                        "</tbody></table>"
-        );
-        Matcher matcher = pattern.matcher(subCat_urlHTML);
-        matcher.find();
-        String ETF_table = matcher.group();
-
-        pattern = Pattern.compile("<tr .*?>" +
-                "<td .*?>.*?</td>" +
-                "<td .*?>.*?</td>" +
-                "<td .*?>(.*?)</td>" +
-                ".*?" +
-                "<td .*?>((-?\\d+\\.\\d+)%|-)</td>" +
-                ".*?" +
-                "</tr>");
-
-        matcher = pattern.matcher(ETF_table);
-        while (matcher.find()) {
-            double key;
-            if (matcher.group(2) == null){
-                key = 0.0;
-            } else {
-                key = Double.parseDouble(matcher.group(3));
-            }
-            String value = matcher.group(1);
-
-            if (!percentChange_company_map.containsKey(key)) {
-                List<String> valueList = new LinkedList<>();
-                valueList.add(value);
-                percentChange_company_map.put(key, valueList);
-            } else {
-                percentChange_company_map.get(key).add(value);
-            }
+    private static void addListToMap(TreeMap<Double, List<String>> map, Double key, String value) {
+        if (!map.containsKey(key)) {
+            List<String> valueList = new LinkedList<>();
+            valueList.add(value);
+            map.put(key, valueList);
+        } else {
+            map.get(key).add(value);
         }
 
-        return percentChange_company_map;
     }
 }

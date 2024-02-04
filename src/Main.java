@@ -27,8 +27,6 @@ public class Main {
 //        map.put(14.4, "b");
 //
 
-
-
 //        Map<Double, List<String>> percentChange_company_map
 //                = test.getTopCompaniesByChangeRate("https://stockanalysis.com/list/biggest-companies/");
 //        Map<Double, List<String>> percentChange_company_map = new TreeMap<>(Collections.reverseOrder());
