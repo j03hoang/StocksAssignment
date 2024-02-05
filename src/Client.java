@@ -27,27 +27,6 @@ public class Client {
         return subCatLink;
     }
 
-    private static void printTopCompanies(Map<Double, List<String>> map, int topCount) {
-        Iterator<Map.Entry<Double, List<String>>> mapItr = map.entrySet().iterator();
-        int iterationCount = 0;
-        while (iterationCount < topCount && mapItr.hasNext()) {
-            Map.Entry<Double, List<String>> entry = mapItr.next();
-
-            if (entry.getValue().size() > 1) {
-                Iterator<String> listItr = entry.getValue().iterator();
-
-                while (iterationCount < topCount && listItr.hasNext()) {
-                    System.out.println(listItr.next() + " " + entry.getKey() + "%");
-                    iterationCount++;
-                }
-
-            } else {
-                System.out.println(entry.getValue().get(0) + " " + entry.getKey() + "%");
-                iterationCount++;
-            }
-        }
-    }
-
     public static void main(String[] args) throws Exception {
         StockAnalyst businessSide = new StockAnalyst();
         Scanner scanner = new Scanner(System.in);
@@ -69,21 +48,16 @@ public class Client {
 
             System.out.println("##----------------------------------------------------------------------------");
             String link = getSubCategoryLink(map, userSelection);
-            Map<Double, List<String>> map2 = businessSide.getTopCompaniesByChangeRate(link);
             System.out.println("How many of the top companies do you care to see?");
             userSelection = scanner.nextInt();
-            printTopCompanies(map2, userSelection);
-            if (businessSide.getUrlText(link).contains("ETFs</h2>")) { //todo
-                Map<Double, List<String>> map3 = businessSide.getTopCompaniesETF(link);
-                printTopCompanies(map3, userSelection);
-            }
+
+            System.out.println("##----------------------------------------------------------------------------");
+            System.out.println("This is the list of top companies by change percentage");
+            Map<Double, List<String>> map2 = businessSide.getTopCompaniesByChangeRate(link, userSelection);
 
             System.out.println("##----------------------------------------------------------------------------");
             System.out.println("Enter 0 to continue, 1 to exit.");
             userSelection = scanner.nextInt();
-
         }
-
-
     }
 }

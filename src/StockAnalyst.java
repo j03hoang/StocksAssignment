@@ -7,6 +7,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class StockAnalyst implements IStockAnalyst {
+
+    /** public member functions */
     public String getUrlText() throws Exception {
         return getUrlText(WEB_URL);
     }
@@ -59,52 +61,72 @@ public class StockAnalyst implements IStockAnalyst {
         String categoryGroup = matcher.group();
 
         pattern = Pattern.compile(
-                "<li>.*?<a href=\"/list/(.*?)\">(.*?)</a>\s?</li>"
+                "<li.*?>.*?<a href=\"((/etf)?/list/.*?)\">(.*?)</a>\s?</li>"
         );
         matcher = pattern.matcher(categoryGroup);
 
         while (matcher.find()) {
-            String link = "https://stockanalysis.com/list/" + matcher.group(1);
-            subCategory_hyperLink_map.put(matcher.group(2), link);
+            String link = "https://stockanalysis.com" + matcher.group(1);
+            subCategory_hyperLink_map.put(matcher.group(3), link);
         }
         return subCategory_hyperLink_map;
     }
 
     @Override
-    public TreeMap<Double, List<String>> getTopCompaniesByChangeRate(String urlText) throws Exception {
+    public TreeMap<Double, List<String>> getTopCompaniesByChangeRate(String urlText, int topCount) throws Exception {
+        TreeMap<Double, List<String>> percentChange_company_map;
         String subCat_urlHtml = getUrlText(urlText);
         Pattern pattern = Pattern.compile(
-                "\\d* Stocks</h2>.*?" +
-                        "</tbody></table>"
+                "<table .*?>.*?" +
+                        "</table>"
         );
         Matcher matcher = pattern.matcher(subCat_urlHtml);
+
         matcher.find();
         String regularStock_table = matcher.group();
+        percentChange_company_map = compileIntoMapPercentPattern(regularStock_table);
+        printTopCompanies(percentChange_company_map, topCount);
 
-        return compileIntoMapPercentPattern(regularStock_table);
+        if (matcher.find()) { // case: two tables to report
+            TreeMap<Double, List<String>> ETF_map;
+            String ETF_table = matcher.group();
+            ETF_map = compileIntoMapPercentPattern(ETF_table);
+            printTopCompanies(ETF_map, topCount);
+
+            percentChange_company_map.putAll(ETF_map);
+        }
+        return percentChange_company_map;
     }
 
-    public TreeMap<Double, List<String>> getTopCompaniesETF(String urlText) throws Exception {
-        String subCat_urlHtml = getUrlText(urlText);
-        Pattern pattern = Pattern.compile(
-                "ETFs</h2>.*?" +
-                        "</tbody></table>"
-        );
-        Matcher matcher = pattern.matcher(subCat_urlHtml);
-        matcher.find();
-        String ETF_table = matcher.group();
+    /** helper functions */
+    private static void printTopCompanies(TreeMap<Double, List<String>> map, int topCount) {
+        Iterator<Map.Entry<Double, List<String>>> mapItr = map.entrySet().iterator();
+        int iterationCount = 0;
+        while (iterationCount < topCount && mapItr.hasNext()) {
+            Map.Entry<Double, List<String>> entry = mapItr.next();
 
-        return compileIntoMapPercentPattern(ETF_table);
+            if (entry.getValue().size() > 1) {
+                Iterator<String> listItr = entry.getValue().iterator();
+
+                while (iterationCount < topCount && listItr.hasNext()) {
+                    System.out.println(listItr.next() + " " + entry.getKey() + "%");
+                    iterationCount++;
+                }
+
+            } else {
+                System.out.println(entry.getValue().get(0) + " " + entry.getKey() + "%");
+                iterationCount++;
+            }
+        }
     }
 
-    /** HELPER METHODS */
     private static TreeMap<Double, List<String>> compileIntoMapPercentPattern(String tableText) {
         TreeMap<Double, List<String>> percentChange_company_map = new TreeMap<>(Collections.reverseOrder());
         Pattern pattern = Pattern.compile("<tr .*?>" +
                 "(.*?)*" +
                 "<td .*?><a href.*?</td>" +
                 "<td .*?>(.*?)</td>" +
-                "(<td class=\"svelte-\\w{7}\">\\d+\\.\\d+%</td>)?" +
+                "(<td class=\"svelte-\\w{7}\">\\d+\\.\\d+%</td>)?" + // case: there was a prior percentage
                 ".*?" +
                 "<td .*?>((-?\\d+\\.\\d+)%|-)</td>" +
                 ".*?" +
@@ -113,7 +135,7 @@ public class StockAnalyst implements IStockAnalyst {
 
         while (matcher.find()) {
             double key;
-            if (Objects.equals(matcher.group(4), "-")) {
+            if (Objects.equals(matcher.group(4), "-")) { // case: no change
                 key = 0.0;
             } else {
                 key = Double.parseDouble(matcher.group(5));
@@ -133,6 +155,5 @@ public class StockAnalyst implements IStockAnalyst {
         } else {
             map.get(key).add(value);
         }
-
     }
 }

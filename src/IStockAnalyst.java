@@ -32,9 +32,10 @@ public interface IStockAnalyst {
     /**
      * Method to get top companies by change rate
      * @param urlText the text of the page that has the stock list
+     * @param topCount how many companies to return
      * @return map that has the top companies and their change rate. Key is the change rate and value is the company name
      */
-    TreeMap<Double, List<String>> getTopCompaniesByChangeRate(final String urlText) throws Exception;
+    TreeMap<Double, List<String>> getTopCompaniesByChangeRate(final String urlText, int topCount) throws Exception;
 }
 
 
